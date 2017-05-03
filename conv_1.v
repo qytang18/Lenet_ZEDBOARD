@@ -70,7 +70,7 @@ always @ (posedge clk)
 begin
     if (rst)
         finish <= 0;
-    else if (fm_row == 28 && output_layer[2:1] == 2)
+    else if (fm_row == 24 && conv_w_cnt == 50 && output_layer[2:1] == 2)
         finish <= 1;
 end
 
@@ -102,10 +102,8 @@ always @ (posedge clk)
 begin
     if (rst)
         fm_row <= 0;
-    else if (fm_row == 28)
-        fm_row <= 0;
     else if (conv_w_cnt == 50) begin
-        if (fm_row < 28)
+        if (fm_row < 24)
             fm_row <= fm_row + 4;
         else 
             fm_row <= 0;
@@ -162,7 +160,12 @@ begin
     if (conv_1_en_p)
         conv_w_bram_addr <= 0;
     else if (conv_1_en && ~finish) begin
-        if (conv_w_cnt[0])
+        if (conv_w_cnt == 50) begin
+            if (fm_row == 24)
+                conv_w_bram_addr <= conv_w_bram_addr - 74;
+            else conv_w_bram_addr <=conv_w_bram_addr - 99;
+        end
+        else if (conv_w_cnt[0])
             conv_w_bram_addr <= conv_w_bram_addr + 75;
         else conv_w_bram_addr <= conv_w_bram_addr - 74;
     end
@@ -197,10 +200,17 @@ begin
         fm_bram_addrb <= 1;
     end
     else if (conv_w_cnt == 50) begin
-        fm_bram_addra <= fm_bram_addra + 2;
+        if (fm_row == 24)
+            fm_bram_addra <= 0;
+        else 
+            fm_bram_addra <= fm_bram_addra + 2;
     end
-    else if (conv_w_cnt == 10 || conv_w_cnt == 30)
-        fm_bram_addrb <= fm_bram_addrb + 1;   
+    else if (conv_w_cnt == 10 || conv_w_cnt == 30) begin
+        if (fm_row == 24)
+            fm_bram_addrb <= 1;
+        else 
+            fm_bram_addrb <= fm_bram_addrb + 1;   
+    end
 end
 
 //bias bram
@@ -240,10 +250,10 @@ end
 always @ (posedge clk) begin
     if (conv_1_en_p)
         fm_bram_1_addra <= 0;
-    else if (store_en && store_en_d[0])
+    else if (store_en_d[1] && store_en_d[0])
         fm_bram_1_addra <= fm_bram_1_addra + 42;
-    else if (~store_en && store_en_d[0])
-        fm_bram_1_addra <= fm_bram_1_addra - 41;
+    else if (~store_en_d[0] && store_en_d[1])
+        fm_bram_1_addra <= fm_bram_1_addra - 40;
 end
 integer i;
 //fm_bram_1_dina
@@ -264,10 +274,10 @@ end
 always @ (posedge clk) begin
     if (conv_1_en_p)
         fm_bram_1_addrb <= 1;
-    else if (store_en && store_en_d[0])
+    else if (store_en_d[1] && store_en_d[0])
         fm_bram_1_addrb <= fm_bram_1_addrb + 42;
-    else if (~store_en && store_en_d[0])
-        fm_bram_1_addrb <= fm_bram_1_addrb - 41;
+     else if (~store_en_d[0] && store_en_d[1])
+        fm_bram_1_addrb <= fm_bram_1_addrb - 40;
 end
 //fm_bram_1_dinb
 always @ (posedge clk) begin

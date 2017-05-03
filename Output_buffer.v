@@ -31,7 +31,7 @@ input [`MAC_NUM * 33-1 : 0] result_33,
 input [4 * 28 - 1 : 0] bias_0,
 input store_en,
 output [`MAC_NUM * 28-1 : 0] result_out_28,
-output reg [`MAC_NUM * 16-1 : 0] store_data_16
+output reg [`MAC_NUM * 17-1 : 0] store_data_17
     );
 
 reg [`MAC_NUM * 28 - 1 : 0] out_buf [0 : 1];
@@ -53,20 +53,20 @@ begin
         begin
         if (result_33_vld)
         begin
-            store_data_16[j*16 +: 12] <= result_33[j*33+12 +: 12] + result_33[j*33+11];
+            store_data_17[j*17 +: 13] <= result_33[j*33+11 +: 13];
             if  (result_33[j*33+32] == 0)
             begin
                 if (result_33[j*33+24 +: 8] > 7)
-                    store_data_16[j*16+12 +: 4] <= 4'b0111;
+                    store_data_17[j*17+13 +: 4] <= 4'b0111;
                 else 
-                    store_data_16[j*16+12 +: 4] <= {1'b0, result_33[j*33+24 +: 3]};
+                    store_data_17[j*17+13 +: 4] <= {1'b0, result_33[j*33+24 +: 3]};
             end
             else
             begin
                 if (result_33[j*33+24 +: 8] < 248)
-                    store_data_16[j*16+12 +: 4] <= 4'b1000;
+                    store_data_17[j*17+13 +: 4] <= 4'b1000;
                 else 
-                    store_data_16[j*16+12 +: 4] <= {1'b1, result_33[j*33+24 +: 3]};
+                    store_data_17[j*17+13 +: 4] <= {1'b1, result_33[j*33+24 +: 3]};
             end
         end
         end        
@@ -107,14 +107,14 @@ begin
                 out_buf[0][j*28 +: 24] <= result_33[j*33 +: 24];
                 if  (result_33[j*33+32] == 0)
                 begin
-                    if (result_33[j*33+28 +: 8] > 7)
+                    if (result_33[j*33+24 +: 8] > 7)
                         out_buf[0][j*28+24 +: 4] <= 4'b0111;
                     else 
                         out_buf[0][j*28+24 +: 4] <= {1'b0, result_33[j*33+24 +: 3]};
                 end
                 else
                 begin
-                    if (result_33[j*33+28 +: 8] < 248)
+                    if (result_33[j*33+24 +: 8] < 248)
                         out_buf[0][j*28+24 +: 4] <= 4'b1000;
                     else 
                         out_buf[0][j*28+24 +: 4] <= {1'b1, result_33[j*33+24 +: 3]};

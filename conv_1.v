@@ -24,7 +24,7 @@ module conv_1(
     input clk,
     input rst,
     input conv_1_en,
-    input [112*16-1 : 0] wr_data,
+    input [112*17-1 : 0] wr_data,
     output reg bias_bram_en,
     output reg [6 : 0]bias_bram_addr,
     output reg fm_bram_ena,//read
@@ -245,11 +245,12 @@ always @ (posedge clk) begin
     else if (~store_en && store_en_d[0])
         fm_bram_1_addra <= fm_bram_1_addra - 41;
 end
-
+integer i;
 //fm_bram_1_dina
 always @ (posedge clk) begin
-    if (store_en)
-        fm_bram_1_dina  <= wr_data[896 +: 896];      
+    if (store_en_d[0])
+    for (i = 0; i < 56 ;i = i + 1)
+        fm_bram_1_dina[i*16 +: 16]  <= wr_data[17*56+i*17+1 +: 16] + wr_data[17*56+i*17] ;      
 end
 
 //fm_bram_1_web
@@ -270,12 +271,10 @@ always @ (posedge clk) begin
 end
 //fm_bram_1_dinb
 always @ (posedge clk) begin
-    if (store_en)
-       fm_bram_1_dinb <= wr_data[0 +: 896];
+    if (store_en_d[0])
+    for (i = 0;i<56;i=i+1)
+       fm_bram_1_dinb[i*16 +: 16] <= wr_data[i*17+1 +: 16] + wr_data[i*17];
 end
-
-
-
 
 
 endmodule

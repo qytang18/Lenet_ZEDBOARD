@@ -128,7 +128,7 @@ reg                        output_buffer_initial;
 reg  [4 * 28 - 1 : 0]      bias_0;
 reg                        store_en;
 wire [`MAC_NUM * 28-1 : 0] output_buffer_result;
-wire [`MAC_NUM * 16-1 : 0] store_data;
+wire [`MAC_NUM * 17-1 : 0] store_data;
 
 // for max module
 reg  [`MAX_NUM * 4 * 16 - 1 : 0]     max_fm_in_1;        
@@ -497,7 +497,7 @@ conv_1 u_conv_1(
     .clk                (clk),
     .rst                (rst),
     .conv_1_en          (conv_1_en),
-    .wr_data            (store_data[112*16-1:0]),
+    .wr_data            (store_data[112*17-1:0]),
     .bias_bram_en       (conv_1_bias_bram_en),
     .bias_bram_addr     (conv_1_bias_bram_addr),
     .fm_bram_ena        (conv_1_fm_bram_ena),
@@ -600,7 +600,7 @@ output_buffer u_output_buffer(
     .bias_0                 (bias_0),
     .store_en               (store_en),
     .result_out_28          (output_buffer_result),
-    .store_data_16             (store_data)
+    .store_data_17             (store_data)
     ); 
 
 input_buffer u_input_buffer(

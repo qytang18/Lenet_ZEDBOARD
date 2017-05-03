@@ -245,16 +245,11 @@ always @ (posedge clk) begin
     else if (~store_en && store_en_d[0])
         fm_bram_1_addra <= fm_bram_1_addra - 41;
 end
-integer j;
+
 //fm_bram_1_dina
 always @ (posedge clk) begin
-    if (rst) 
-        fm_bram_1_dina <= 0;
-    else if (store_en)
-    begin
-        for (j = 0; j < 56; j = j + 1)
-           fm_bram_1_dina [j*16 +: 16] <= wr_data[(j+56)*16 +: 16];
-    end
+    if (store_en)
+        fm_bram_1_dina  <= wr_data[896 +: 896];      
 end
 
 //fm_bram_1_web
@@ -275,13 +270,8 @@ always @ (posedge clk) begin
 end
 //fm_bram_1_dinb
 always @ (posedge clk) begin
-    if (rst) 
-        fm_bram_1_dinb <= 0;
-    else if (store_en)
-    begin
-        for (j = 0; j < 56; j = j + 1)
-           fm_bram_1_dinb [j*16 +: 16] <= wr_data[j*16 +: 16];
-    end
+    if (store_en)
+       fm_bram_1_dinb <= wr_data[0 +: 896];
 end
 
 

@@ -107,14 +107,14 @@ begin
                 out_buf[0][j*28 +: 24] <= result_33[j*33 +: 24];
                 if  (result_33[j*33+32] == 0)
                 begin
-                    if (& result_33[j*33+28 +: 5])
+                    if (result_33[j*33+28 +: 8] > 7)
                         out_buf[0][j*28+24 +: 4] <= 4'b0111;
                     else 
                         out_buf[0][j*28+24 +: 4] <= {1'b0, result_33[j*33+24 +: 3]};
                 end
                 else
                 begin
-                    if (&(~result_33[j*33+28 +: 5]))
+                    if (result_33[j*33+28 +: 8] < 248)
                         out_buf[0][j*28+24 +: 4] <= 4'b1000;
                     else 
                         out_buf[0][j*28+24 +: 4] <= {1'b1, result_33[j*33+24 +: 3]};

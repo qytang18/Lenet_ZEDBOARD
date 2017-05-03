@@ -234,7 +234,7 @@ always @ (posedge clk) begin
     if (rst)
         fm_bram_1_wea <= 0;        
     else 
-        fm_bram_1_wea <= store_en;
+        fm_bram_1_wea <= store_en_d[0];
 end
 //fm_bram_1_addra
 always @ (posedge clk) begin
@@ -258,7 +258,7 @@ always @ (posedge clk) begin
     if (rst)
         fm_bram_1_web <= 0;        
     else 
-        fm_bram_1_web <= store_en;
+        fm_bram_1_web <= store_en_d[0];
 end
 //fm_bram_1_addrb
 always @ (posedge clk) begin

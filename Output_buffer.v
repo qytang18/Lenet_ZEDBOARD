@@ -127,9 +127,7 @@ end
 
 always @ (posedge clk)
 begin
-    if (rst) 
-        out_buf[1] <= 0;
-    else if (output_buffer_initial_d)
+    if (output_buffer_initial_d)
     case (CS)
         `SCONV_1: begin
             out_buf[1][0 +: 112*28] <= {112{bias_0[0 +: 28]}};

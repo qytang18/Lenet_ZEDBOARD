@@ -53,7 +53,7 @@ generate for (i = 0; i < `MAC_NUM; i=i+1) begin :mult_add
       .CE(mac_en[i]||mac_en_d||mac_en_d),      // input wire CE
       .SCLR(rst),  // input wire SCLR
       .A(img[i * 16 +: 16]),        // input wire [15 : 0] A
-      .B(ker[i *16 +: 16]),        // input wire [15 : 0] B
+      .B(ker[(i/8) *16 +: 16]),        // input wire [15 : 0] B
       .C({partial_output[i*28 +: 28]}),        // input wire [27 : 0] C
       .P(result[i*33 +: 33])        // output wire [32 : 0] P
     );

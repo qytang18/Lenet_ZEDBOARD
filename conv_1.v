@@ -138,7 +138,7 @@ end
 
 always @ (posedge clk)
 begin
-    store_en <= store_en_pre[3] || store_en_pre[4];
+    store_en <= store_en_pre[3] || store_en_pre[2];
 end
 
 always @ (posedge clk)
@@ -196,7 +196,7 @@ begin
         fm_bram_addra <= 0;
         fm_bram_addrb <= 1;
     end
-    else if (conv_w_cnt == 0) begin
+    else if (conv_w_cnt == 50) begin
         fm_bram_addra <= fm_bram_addra + 2;
     end
     else if (conv_w_cnt == 10 || conv_w_cnt == 30)
@@ -209,7 +209,7 @@ begin
     if (conv_1_en && conv_1_en_d == 0) begin
         bias_bram_en <= 1;
     end
-    else if (conv_1_en && store_en_pre[1] ) begin
+    else if (conv_1_en && store_en_pre[0] ) begin
         bias_bram_en <= 1;
     end         
     else begin

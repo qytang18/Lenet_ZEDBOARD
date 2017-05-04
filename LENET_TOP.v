@@ -85,6 +85,18 @@ wire [6:0]  conv_2_fm_bram_1_addrb;
 wire [895:0] conv_2_fm_bram_1_dina;
 wire [895:0] conv_2_fm_bram_1_dinb;
 
+//pool 2
+wire            pool_2_fm_bram_1_ena;//read
+wire            pool_2_fm_bram_1_enb;
+wire [6 : 0]    pool_2_fm_bram_1_addra;
+wire [6 : 0]    pool_2_fm_bram_1_addrb;
+wire            pool_2_fm_bram_wea;
+wire [4 : 0]    pool_2_fm_bram_addra;
+wire [70 * 16 - 1 : 0] pool_2_fm_bram_dina;
+wire            pool_2_finish;
+
+
+
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
 reg    [11 : 0] conv_w_bram_addra;
@@ -236,6 +248,14 @@ begin
                     CS <= `SPOOL_2;
                     conv_2_en <= 0;
                     pool_2_en <= 1;
+                end
+            end
+            `SPOOL_2: begin
+                if (pool_2_finish)
+                begin
+                    CS <= `SFC_1;
+                    pool_2_en <= 1;
+                    fc_1_en <= 2;
                 end
             end
             default: 

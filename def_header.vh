@@ -8,8 +8,10 @@
 `define SCONV_2 3
 `define SPOOL_2 4
 `define SFC_1 5
-`define SFC_2 6
-`define SFC_3 7
+`define SRELU_1 6
+`define SFC_2 7
+`define SRELU_2 8
+`define SFC_3 9
 
 // parameter
 `define MAC_NUM 120

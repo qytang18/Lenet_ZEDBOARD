@@ -31,6 +31,8 @@ output pool_1_sig
 
 reg conv_1_en;   
 reg pool_1_en;
+reg conv_2_en;
+reg pool_2_en;
 reg [3 : 0] CS; //current_state
 reg [3 : 0] NS; //next_state 
 
@@ -65,6 +67,18 @@ wire   [4 : 0]  pool_1_fm_bram_addrb;
 wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dina;
 wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dinb;
 wire pool_1_finish;
+
+//conv_2
+wire        conv_2_bias_bram_en;
+wire [6:0]  conv_2_bias_bram_addr;
+wire        conv_2_fm_bram_ena;
+wire        conv_2_fm_bram_enb;
+wire [4:0]  conv_2_fm_bram_addra;
+wire [4:0]  conv_2_fm_bram_addrb;
+wire        conv_2_conv_w_bram_en;
+wire [11:0] conv_2_conv_w_bram_addr;
+wire        conv_2_finish;
+
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
 reg    [11 : 0] conv_w_bram_addra;
@@ -72,7 +86,7 @@ wire   [23 : 0] conv_w_bram_douta;
 reg             conv_w_bram_enb;
 reg    [11 : 0] conv_w_bram_addrb;
 wire   [23 : 0] conv_w_bram_doutb;
-reg            conv_w_bram_rd_vld;
+reg             conv_w_bram_rd_vld;
 
 //fm_bram control signals
 reg             fm_bram_ena;
@@ -173,6 +187,7 @@ begin
         CS <= `IDLE;
         conv_1_en <= 0;
         pool_1_en <= 0;
+        conv_2_en <= 0;
     end    
     else 
     begin
@@ -184,12 +199,12 @@ begin
                     conv_1_en <= 1;
                     pool_1_en <= 0;
                 end
-               else if (pool_1_start)
-                begin
-                    CS <= `SPOOL_1;
-                    conv_1_en <= 0;
-                    pool_1_en <= 1;                    
-                end
+//               else if (pool_1_start)
+//                begin
+//                    CS <= `SPOOL_1;
+//                    conv_1_en <= 0;
+//                    pool_1_en <= 1;                    
+//                end
                // else CS <= CS;
             end
             `SCONV_1: begin
@@ -205,8 +220,16 @@ begin
                 if (pool_1_finish == 1)
                 begin
                     CS <= `SCONV_2;
-                    conv_1_en <= 0;
+                    conv_2_en <= 1;
                     pool_1_en <= 0;
+                end
+            end
+            `SCONV_2:begin
+                if (conv_2_finish)
+                begin
+                    CS <= `SPOOL_2;
+                    conv_2_en <= 0;
+                    pool_2_en <= 1;
                 end
             end
             default: 
@@ -214,6 +237,8 @@ begin
                 CS <= CS;
                 conv_1_en <= 0;
                 pool_1_en <= 0;
+                conv_2_en <= 0;
+                pool_2_en <= 0;
             end
         endcase
     end
@@ -248,12 +273,18 @@ always @ (*)begin
             fm_bram_addrb = pool_1_fm_bram_addrb;  
 			fm_bram_dina = pool_1_fm_bram_dina;
 			fm_bram_dinb = pool_1_fm_bram_dinb;
+	   end
+	   `SCONV_2: begin
+	        fm_bram_ena = conv_2_fm_bram_ena;
+            fm_bram_enb = conv_2_fm_bram_enb;
+            fm_bram_wea = 0;
+            fm_bram_web = 0;
+            fm_bram_addra = conv_2_fm_bram_addra;
+            fm_bram_addrb = conv_2_fm_bram_addrb;   
         end
         default: begin
             fm_bram_ena = 0;
             fm_bram_enb = 0;
-            fm_bram_wea = 0;
-            fm_bram_web = 0;
         end
         endcase    
     end
@@ -316,6 +347,11 @@ begin
             conv_w_bram_addra = conv_1_conv_w_bram_addr;
             conv_w_bram_enb = 0;
         end
+        `SCONV_2: begin
+            conv_w_bram_ena = conv_2_conv_w_bram_en;        
+            conv_w_bram_addra = conv_2_conv_w_bram_addr;
+            conv_w_bram_enb = 0;
+        end
         default: begin
             conv_w_bram_ena = 0;
             conv_w_bram_enb = 0;
@@ -339,6 +375,11 @@ begin
             bias_bram_addra = conv_1_bias_bram_addr;
             bias_bram_enb = 0;
         end
+        `SCONV_2: begin
+            bias_bram_ena = conv_2_bias_bram_en;        
+            bias_bram_addra = conv_2_bias_bram_addr;
+            bias_bram_enb = 0;
+        end        
         default: begin
             bias_bram_ena = 0;
             bias_bram_enb = 0;
@@ -356,6 +397,15 @@ begin
     begin
         case (CS)
            `SCONV_1: begin
+              if (bias_bram_rd_vld)
+              begin
+                    output_buffer_initial <= 1;
+                    bias_0 <= {56'h0,bias_bram_douta[31 : 16],12'b0,bias_bram_douta[15 : 0],12'b0};
+               end
+               else 
+                    output_buffer_initial <= 0; 
+           end
+           `SCONV_2: begin
               if (bias_bram_rd_vld)
               begin
                     output_buffer_initial <= 1;
@@ -383,6 +433,10 @@ begin
             if (conv_w_bram_rd_vld)
                 ker_in <= {20{conv_w_bram_douta[23 : 8]}};
          end
+        `SCONV_2:begin
+             if (conv_w_bram_rd_vld)
+                 ker_in <= {20{conv_w_bram_douta[23 : 8]}};
+          end
          default:
             ker_in <= 0;
         endcase
@@ -398,7 +452,10 @@ begin
     case (CS) 
     `SCONV_1:begin
         input_buffer_en <= conv_1_conv_w_bram_en;
-        end
+    end
+    `SCONV_2:begin
+        input_buffer_en <= conv_1_conv_w_bram_en;
+    end
     default:
         input_buffer_en <= 0;
     endcase
@@ -413,13 +470,18 @@ begin
     else
     begin
         case (CS)
-        `SCONV_1: 
-            begin
-                if (conv_w_bram_rd_vld)
-                    mac_en <= {8'h00, 112'hffff_ffff_ffff_ffff_ffff_ffff_ffff};        
-                else 
-                    mac_en <= 0;
-            end
+        `SCONV_1: begin
+            if (conv_w_bram_rd_vld)
+                mac_en <= {8'h00, 112'hffff_ffff_ffff_ffff_ffff_ffff_ffff};        
+            else 
+                mac_en <= 0;
+        end
+       `SCONV_1: begin
+            if (conv_w_bram_rd_vld)
+                mac_en <= {20'h0, 100'hffff_ffff_ffff_ffff_ffff_ffff_f};        
+            else 
+                mac_en <= 0;
+        end
         default: 
             mac_en <= 0;
         endcase
@@ -541,13 +603,13 @@ conv_2 u_conv_2(
     .rst            (rst),
     .conv_2_en      (conv_2_en),
     .bias_bram_en   (conv_2_bias_bram_en),
-    .bias_bram_addr (conv_2_bias_bram_en),
+    .bias_bram_addr (conv_2_bias_bram_addr),
     .fm_bram_ena    (conv_2_fm_bram_ena),//read
     .fm_bram_enb    (conv_2_fm_bram_enb),
     .fm_bram_addra  (conv_2_fm_bram_addra),
     .fm_bram_addrb  (conv_2_fm_bram_addrb),
-    .conv_w_bram_en (conv_w_bram_en),
-    .conv_w_bram_addr(conv_w_addr),
+    .conv_w_bram_en (conv_2_conv_w_bram_en),
+    .conv_w_bram_addr(conv_2_conv_w_bram_addr),
     .conv_2_finish  (conv_2_finish)
     );     
 

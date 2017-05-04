@@ -47,6 +47,14 @@ assign conv_2_en_p = conv_2_en & ~conv_2_en_d;
 
 always @ (posedge clk)
 begin
+    if (rst)    
+        finish <= 0;
+    else if ((fm_out == 7) && (conv_w_cnt == 300))
+        finish <= 1;
+end
+
+always @ (posedge clk)
+begin
     if (conv_2_en_p)
         conv_w_cnt <= 1;
     else if (conv_2_en && (~finish)) begin
@@ -131,7 +139,7 @@ end
 always @ (posedge clk)
 begin
     if (conv_2_en_p)
-        bias_bram_addra <= 4;
+        bias_bram_addr <= 4;
 end
 
 endmodule

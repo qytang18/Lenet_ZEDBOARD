@@ -454,7 +454,7 @@ begin
         input_buffer_en <= conv_1_conv_w_bram_en;
     end
     `SCONV_2:begin
-        input_buffer_en <= conv_1_conv_w_bram_en;
+        input_buffer_en <= conv_2_conv_w_bram_en;
     end
     default:
         input_buffer_en <= 0;
@@ -476,7 +476,7 @@ begin
             else 
                 mac_en <= 0;
         end
-       `SCONV_1: begin
+       `SCONV_2: begin
             if (conv_w_bram_rd_vld)
                 mac_en <= {20'h0, 100'hffff_ffff_ffff_ffff_ffff_ffff_f};        
             else 

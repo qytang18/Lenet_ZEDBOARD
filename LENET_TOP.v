@@ -535,7 +535,21 @@ pool_1 u_pool_1(
     .fm_bram_dinb       (pool_1_fm_bram_dinb),
     .pool_1_finish      (pool_1_finish)
     );
-     
+
+conv_2 u_conv_2(
+    .clk            (clk),
+    .rst            (rst),
+    .conv_2_en      (conv_2_en),
+    .bias_bram_en   (conv_2_bias_bram_en),
+    .bias_bram_addr (conv_2_bias_bram_en),
+    .fm_bram_ena    (conv_2_fm_bram_ena),//read
+    .fm_bram_enb    (conv_2_fm_bram_enb),
+    .fm_bram_addra  (conv_2_fm_bram_addra),
+    .fm_bram_addrb  (conv_2_fm_bram_addrb),
+    .conv_w_bram_en (conv_w_bram_en),
+    .conv_w_bram_addr(conv_w_addr),
+    .conv_2_finish  (conv_2_finish)
+    );     
 
 FM_BRAM u_fm_bram (
       .clka (clk),    // input wire clka

@@ -36,14 +36,16 @@ output reg [4 : 0] fm_bram_addra,
 //output reg [4 : 0] fm_bram_addrb,
 output reg [70 * 16 - 1 : 0] fm_bram_dina,
 //output reg [70 * 16 - 1 : 0] fm_bram_dinb,
-output pool_2_finish
+output reg pool_2_finish
     );
 
 reg finish;
 reg pool_2_en_d;
 reg  [3 : 0] result_vld;
 wire pool_2_en_p;
-assign pool_2_finish = finish;
+
+always @ (posedge clk)
+    pool_2_finish <= (fm_bram_addra == 15);
 
 always @ (posedge clk)
     pool_2_en_d <= pool_2_en;
@@ -53,7 +55,7 @@ always @ (posedge clk)
 begin
     if (rst)
         finish <= 0;
-    else if (fm_bram_addra == 15)
+    else if (fm_bram_1_addrb == 31)
         finish <= 1;
 end
 

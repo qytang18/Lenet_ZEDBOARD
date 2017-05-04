@@ -55,14 +55,9 @@ begin
         begin
             case (cur_state)            
             3'b001:begin    
-                case (ker_row)
-                4'd0:    in_r <= {in_1[1023:0],in_2[1023:0]};
-                4'd1:    in_r <= {in_r[32*3*16-1:0],in_2[32*16 +: 32*16]};
-                4'd2:    in_r <= {in_r[32*3*16-1:0],in_2[0 +: 32*16]};
-                4'd3:    in_r <= {in_r[32*3*16-1:0],in_2[32*16 +: 32*16]};
-                4'd4:    in_r <= {in_r[32*3*16-1:0],in_2[0 +: 32*16]};                    
-                default: in_r <= in_r;
-                endcase
+                if (ker_row[0])
+                     in_r <= {in_r[32*3*16-1:0],in_2[32*16 +: 32*16]};
+                else in_r <= {in_1[1023:0],in_2[1023:0]};
             end
             endcase
         end

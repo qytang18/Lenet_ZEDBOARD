@@ -62,8 +62,8 @@ wire            pool_1_fm_bram_wea;
 wire            pool_1_fm_bram_web;
 wire   [4 : 0]  pool_1_fm_bram_addra;
 wire   [4 : 0]  pool_1_fm_bram_addrb;
-wire   [42 * 16 - 1 : 0] pool_1_fm_bram_dina;
-wire   [42 * 16 - 1 : 0] pool_1_fm_bram_dinb;
+wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dina;
+wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dinb;
 wire pool_1_finish;
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
@@ -246,8 +246,8 @@ always @ (*)begin
             fm_bram_web = pool_1_fm_bram_wea;
             fm_bram_addra = pool_1_fm_bram_addra;
             fm_bram_addrb = pool_1_fm_bram_addrb;  
-			fm_bram_dina = {352'h0,pool_1_fm_bram_dina};
-			fm_bram_dinb = {352'h0,pool_1_fm_bram_dinb};
+			fm_bram_dina = pool_1_fm_bram_dina;
+			fm_bram_dinb = pool_1_fm_bram_dinb;
         end
         default: begin
             fm_bram_ena = 0;
@@ -521,8 +521,8 @@ pool_1 u_pool_1(
     .clk                (clk),
     .rst                (rst),
     .pool_1_en          (pool_1_en),
-    .pool_max_result_1  (pool_max_result_1),
-    .pool_max_result_2  (pool_max_result_2),
+    .pool_max_result_1  (pool_max_result_1[14*16-1:0]),
+    .pool_max_result_2  (pool_max_result_2[14*16-1:0]),
     .fm_bram_1_ena      (pool_1_fm_bram_1_ena),//read
     .fm_bram_1_enb      (pool_1_fm_bram_1_enb),    
     .fm_bram_1_addra    (pool_1_fm_bram_1_addra),
@@ -533,7 +533,7 @@ pool_1 u_pool_1(
     .fm_bram_web        (pool_1_fm_bram_web),
     .fm_bram_addrb      (pool_1_fm_bram_addrb),
     .fm_bram_dinb       (pool_1_fm_bram_dinb),
-    .pool_1_finish             (pool_1_finish)
+    .pool_1_finish      (pool_1_finish)
     );
      
 

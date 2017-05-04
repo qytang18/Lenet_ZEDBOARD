@@ -52,7 +52,7 @@ reg [5 : 0] finish_d;
 reg [5 : 0] conv_w_cnt;
 reg [2 : 0] output_layer;
 reg conv_1_en_d;
-reg [4 : 0] store_en_pre;
+reg [3 : 0] store_en_pre;
 reg [1 : 0] store_en_d;
 wire conv_1_en_p;
 reg [4 : 0] fm_row;
@@ -118,7 +118,7 @@ begin
     begin
         if (conv_1_en_p)
             output_layer <= 0;
-        else if (fm_row == 28)
+        else if (fm_row == 24 && conv_w_cnt == 50)
         begin
             output_layer[2:1] <= output_layer[2:1] + 1;
             output_layer[0] <= 0;
@@ -131,7 +131,7 @@ end
 always @ (posedge clk)
 begin
     store_en_pre[0] <= (conv_w_cnt == 50);
-    store_en_pre[4:1] <= store_en_pre[3:0];
+    store_en_pre[3:1] <= store_en_pre[2:0];
 end
 
 always @ (posedge clk)
@@ -185,7 +185,10 @@ begin
         fm_bram_enb <= 1;
     end    
     else if ( (conv_w_cnt == 10) || (conv_w_cnt == 30) )
+    begin
+        fm_bram_ena <= 1;
         fm_bram_enb <= 1;
+    end
     else begin
         fm_bram_ena <= 0;
         fm_bram_enb <= 0;
@@ -200,16 +203,14 @@ begin
         fm_bram_addrb <= 1;
     end
     else if (conv_w_cnt == 50) begin
-        if (fm_row == 24)
+        if (fm_row == 24) begin
             fm_bram_addra <= 0;
-        else 
-            fm_bram_addra <= fm_bram_addra + 2;
-    end
-    else if (conv_w_cnt == 10 || conv_w_cnt == 30) begin
-        if (fm_row == 24)
             fm_bram_addrb <= 1;
-        else 
-            fm_bram_addrb <= fm_bram_addrb + 1;   
+            end
+    end
+    else if (conv_w_cnt == 10 || conv_w_cnt == 30) begin 
+        fm_bram_addra <= fm_bram_addra + 1;
+        fm_bram_addrb <= fm_bram_addrb + 1;   
     end
 end
 

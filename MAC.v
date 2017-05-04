@@ -50,7 +50,7 @@ assign result_vld = mac_en_d[2];
 generate for (i = 0; i < `MAC_NUM; i=i+1) begin :mult_add
     mult_add u_mult_add (
       .CLK(clk),    // input wire CLK
-      .CE(mac_en[i]||mac_en_d||mac_en_d),      // input wire CE
+      .CE(mac_en[i]||mac_en_d[0]),      // input wire CE
       .SCLR(rst),  // input wire SCLR
       .A(img[i * 16 +: 16]),        // input wire [15 : 0] A
       .B(ker[(i/8) *16 +: 16]),        // input wire [15 : 0] B

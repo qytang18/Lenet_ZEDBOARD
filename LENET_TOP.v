@@ -78,6 +78,12 @@ wire [4:0]  conv_2_fm_bram_addrb;
 wire        conv_2_conv_w_bram_en;
 wire [11:0] conv_2_conv_w_bram_addr;
 wire        conv_2_finish;
+wire        conv_2_fm_bram_1_wea;
+wire        conv_2_fm_bram_1_web;
+wire [6:0]  conv_2_fm_bram_1_addra;
+wire [6:0]  conv_2_fm_bram_1_addrb;
+wire [895:0] conv_2_fm_bram_1_dina;
+wire [895:0] conv_2_fm_bram_1_dinb;
 
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
@@ -321,6 +327,16 @@ always @ (*)begin
             fm_bram_1_addra = pool_1_fm_bram_1_addra;
             fm_bram_1_addrb = pool_1_fm_bram_1_addrb;                        
         end
+        `SCONV_2: begin
+            fm_bram_1_ena = conv_2_fm_bram_1_wea;
+            fm_bram_1_enb = conv_2_fm_bram_1_web;
+            fm_bram_1_wea = conv_2_fm_bram_1_wea;
+            fm_bram_1_web = conv_2_fm_bram_1_wea;
+            fm_bram_1_addra = conv_2_fm_bram_1_addra;
+            fm_bram_1_addrb = conv_2_fm_bram_1_addrb;
+            fm_bram_1_dina = conv_2_fm_bram_1_dina;  
+            fm_bram_1_dinb = conv_2_fm_bram_1_dinb;        
+        end
         default: begin
             fm_bram_1_ena = 0;
             fm_bram_1_enb = 0;
@@ -491,8 +507,8 @@ end
 always @ (*)
 begin
     case (CS)
-        `SCONV_1: 
-            store_en = conv_1_store_en; 
+        `SCONV_1: store_en = conv_1_store_en; 
+        `SCONV_2: store_en = conv_2_store_en;         
     endcase
 end
 
@@ -602,6 +618,7 @@ conv_2 u_conv_2(
     .clk            (clk),
     .rst            (rst),
     .conv_2_en      (conv_2_en),
+    .wr_data        (store_data[100*17-1:0]),
     .bias_bram_en   (conv_2_bias_bram_en),
     .bias_bram_addr (conv_2_bias_bram_addr),
     .fm_bram_ena    (conv_2_fm_bram_ena),//read
@@ -610,8 +627,16 @@ conv_2 u_conv_2(
     .fm_bram_addrb  (conv_2_fm_bram_addrb),
     .conv_w_bram_en (conv_2_conv_w_bram_en),
     .conv_w_bram_addr(conv_2_conv_w_bram_addr),
+    .fm_bram_1_wea   (conv_2_fm_bram_1_wea),
+    .fm_bram_1_web   (conv_2_fm_bram_1_web),
+    .fm_bram_1_addra (conv_2_fm_bram_1_addra),
+    .fm_bram_1_addrb (conv_2_fm_bram_1_addrb),
+    .fm_bram_1_dina  (conv_2_fm_bram_1_dina),
+    .fm_bram_1_dinb  (conv_2_fm_bram_1_dinb),
+    .store_en       (conv_2_store_en),
     .conv_2_finish  (conv_2_finish)
     );     
+
 
 FM_BRAM u_fm_bram (
       .clka (clk),    // input wire clka

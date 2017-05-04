@@ -50,6 +50,17 @@ reg conv_2_en_d;
 wire conv_2_en_p;
 reg [3:0] store_en_pre;
 reg [1:0] store_en_d;
+reg [5 : 0] finish_d;
+
+assign conv_2_finish = finish_d[5];
+
+always @ (posedge clk)
+begin
+    if (rst) 
+        finish_d <= 0;
+    else 
+        finish_d <= {finish_d[4:0],finish};
+end
 
 always @ (posedge clk) begin
     conv_2_en_d <= conv_2_en;
@@ -111,7 +122,7 @@ end
 always @ (posedge clk)
 begin
     if (conv_2_en_p)
-        conv_w_bram_addr <= 0;
+        conv_w_bram_addr <= 150;
     else if (conv_2_en && ~finish) begin
         if (conv_w_cnt[0])
             conv_w_bram_addr <= conv_w_bram_addr + 1200;
@@ -195,17 +206,17 @@ always @ (posedge clk) begin
     fm_bram_1_dina[56*16-1 : 50*16] <= 0;
     if (store_en_d[0]) 
     for (i = 0; i < 50 ;i = i + 1)
-        fm_bram_1_dina[i*16 +: 16]  <= wr_data[17*56+i*17+1 +: 16] + wr_data[17*56+i*17] ;      
+        fm_bram_1_dina[i*16 +: 16]  <= wr_data[17*50+i*17+1 +: 16] + wr_data[17*50+i*17] ;      
 end
 
-//fm_bram_1_wea
+//fm_bram_1_web
 always @ (posedge clk) begin
     if (rst)
         fm_bram_1_web <= 0;        
     else 
         fm_bram_1_web <= store_en_d[0];
 end
-//fm_bram_1_addra
+//fm_bram_1_addrb
 always @ (posedge clk) begin
     if (conv_2_en_p)
         fm_bram_1_addrb <= 1;
@@ -214,13 +225,13 @@ always @ (posedge clk) begin
     else if (~store_en_d[0] && store_en_d[1])
         fm_bram_1_addrb <= fm_bram_1_addrb - 15;
 end
-integer i;
-//fm_bram_1_dina
+
+//fm_bram_1_dinb
 always @ (posedge clk) begin
     fm_bram_1_dinb[56*16-1 : 50*16] <= 0;
     if (store_en_d[0]) 
     for (i = 0; i < 50 ;i = i + 1)
-        fm_bram_1_dinb[i*16 +: 16]  <= wr_data[17*56+i*17+1 +: 16] + wr_data[17*56+i*17] ;      
+        fm_bram_1_dinb[i*16 +: 16]  <= wr_data[i*17+1 +: 16] + wr_data[i*17] ;      
 end
 
 endmodule

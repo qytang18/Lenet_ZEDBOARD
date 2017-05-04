@@ -94,7 +94,8 @@ begin
         `SCONV_1: begin
             out_buf[0][0 +: 112*28] <= {112{bias_0[28 +: 28]}};
         end
-        `SCONV_2: begin                              
+        `SCONV_2: begin  
+            out_buf[0][0 +: 100*28] <= {112{bias_0[28 +: 28]}};                           
         end
         endcase 
     end                                    
@@ -133,7 +134,7 @@ begin
             out_buf[1][0 +: 112*28] <= {112{bias_0[0 +: 28]}};
         end
         `SCONV_2: begin
-                           
+            out_buf[1][0 +: 100*28] <= {112{bias_0[0 +: 28]}};               
         end        
         default: begin
             out_buf[1] <= out_buf[1];

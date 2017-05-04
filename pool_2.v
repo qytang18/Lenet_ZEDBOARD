@@ -43,6 +43,7 @@ reg finish;
 reg pool_2_en_d;
 reg  [3 : 0] result_vld;
 wire pool_2_en_p;
+assign pool_2_finish = finish;
 
 always @ (posedge clk)
     pool_2_en_d <= pool_2_en;
@@ -52,7 +53,7 @@ always @ (posedge clk)
 begin
     if (rst)
         finish <= 0;
-    else if (fm_bram_1_addrb == 31)
+    else if (fm_bram_addra == 15)
         finish <= 1;
 end
 
@@ -111,7 +112,7 @@ end
 always @ (posedge clk)
 begin
     if (result_vld[3])
-        fm_bram_addra <= {720'h0,pool_max_result_1, pool_max_result_2};
+        fm_bram_dina <= {720'h0,pool_max_result_1, pool_max_result_2};
 end
 
 endmodule

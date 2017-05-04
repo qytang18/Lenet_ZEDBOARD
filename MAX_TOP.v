@@ -43,8 +43,12 @@ begin
     begin
         case (CS) 
         `SPOOL_1: begin
-            fm_in_1 = {32'h0,fm_in [0 +: 14 * 2 * 16]};
-            fm_in_2 = {32'h0,fm_in [14 * 2 * 16 +: 14 * 2 * 16]};
+            fm_in_1 = {32'h0,fm_in [0 +: 28 * 16]};//line 0
+            fm_in_2 = {32'h0,fm_in [28 * 16 +: 28 * 16]}; //line 1
+        end
+        `SPOOL_2: begin
+            fm_in_1 = {fm_in[800+:160],fm_in[480+:160],fm_in[160+:160]};
+            fm_in_2 = {fm_in[640+:160],fm_in[320+:160],fm_in[0+:160]};
         end
         endcase
     end

@@ -198,7 +198,7 @@ always @ (posedge clk) begin
     else if (store_en_d[1] && store_en_d[0])
         fm_bram_1_addra <= fm_bram_1_addra + 16;
     else if (~store_en_d[0] && store_en_d[1])
-        fm_bram_1_addra <= fm_bram_1_addra - 15;
+        fm_bram_1_addra <= fm_bram_1_addra - 14;
 end
 integer i;
 //fm_bram_1_dina
@@ -223,7 +223,7 @@ always @ (posedge clk) begin
     else if (store_en_d[1] && store_en_d[0])
         fm_bram_1_addrb <= fm_bram_1_addrb + 16;
     else if (~store_en_d[0] && store_en_d[1])
-        fm_bram_1_addrb <= fm_bram_1_addrb - 15;
+        fm_bram_1_addrb <= fm_bram_1_addrb - 14;
 end
 
 //fm_bram_1_dinb

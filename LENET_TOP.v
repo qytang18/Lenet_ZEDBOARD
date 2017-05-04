@@ -33,6 +33,7 @@ reg conv_1_en;
 reg pool_1_en;
 reg conv_2_en;
 reg pool_2_en;
+reg fc_1_en;
 reg [3 : 0] CS; //current_state
 reg [3 : 0] NS; //next_state 
 
@@ -254,8 +255,8 @@ begin
                 if (pool_2_finish)
                 begin
                     CS <= `SFC_1;
-                    pool_2_en <= 1;
-                    fc_1_en <= 2;
+                    pool_2_en <= 0;
+                    fc_1_en <= 1;
                 end
             end
             default: 
@@ -265,6 +266,7 @@ begin
                 pool_1_en <= 0;
                 conv_2_en <= 0;
                 pool_2_en <= 0;
+                fc_1_en <= 0;
             end
         endcase
     end
@@ -308,6 +310,13 @@ always @ (*)begin
             fm_bram_addra = conv_2_fm_bram_addra;
             fm_bram_addrb = conv_2_fm_bram_addrb;   
         end
+        `SPOOL_2: begin
+            fm_bram_ena = pool_2_fm_bram_wea;
+            fm_bram_enb = 0;
+            fm_bram_wea = pool_2_fm_bram_wea;
+            fm_bram_addra = pool_2_fm_bram_addra;  
+            fm_bram_dina = pool_2_fm_bram_dina;
+       end
         default: begin
             fm_bram_ena = 0;
             fm_bram_enb = 0;
@@ -357,11 +366,17 @@ always @ (*)begin
             fm_bram_1_dina = conv_2_fm_bram_1_dina;  
             fm_bram_1_dinb = conv_2_fm_bram_1_dinb;        
         end
+        `SPOOL_2: begin
+            fm_bram_1_ena = pool_2_fm_bram_1_ena;
+            fm_bram_1_enb = pool_2_fm_bram_1_enb;
+            fm_bram_1_wea = 0;
+            fm_bram_1_web = 0;
+            fm_bram_1_addra = pool_2_fm_bram_1_addra;
+            fm_bram_1_addrb = pool_2_fm_bram_1_addrb;                        
+        end
         default: begin
             fm_bram_1_ena = 0;
             fm_bram_1_enb = 0;
-            fm_bram_1_wea = 0;
-            fm_bram_1_web = 0;
         end
         endcase    
     end
@@ -544,6 +559,11 @@ begin
                 max_en_1 <= {1'b0,14'h3fff};
             else max_en_1 <= 0;
         end
+        `SPOOL_2: begin
+            if (pool_2_fm_bram_1_ena)
+                max_en_1 <= {5'b0, 10'h3ff};
+            else max_en_1 <= 0;
+        end
         default:
             max_en_1 <= 0;
         endcase
@@ -561,6 +581,11 @@ begin
                 max_en_2 <= {1'b0,14'h3fff};
             else max_en_2 <= 0;
         end
+        `SPOOL_2: begin
+            if (pool_2_fm_bram_1_enb)
+                max_en_2 <= 15'h7fff;
+            else max_en_2 <= 0;
+        end        
         default:
             max_en_2 <= 0;
         endcase
@@ -573,7 +598,10 @@ begin
     `SPOOL_1 : begin
         if (fm_bram_1_rda_vld)
             max_fm_in_1 <= {64'b0, fm_bram_1_douta[0 +: 896]};
-        else max_fm_in_1 <= 0;
+    end
+   `SPOOL_2 : begin
+        if (fm_bram_1_rda_vld)
+            max_fm_in_1 <= {320'b0, fm_bram_1_douta[10*16 +: 40*16]};
     end
     default: max_fm_in_1 <= 0;
     endcase
@@ -585,7 +613,10 @@ begin
     `SPOOL_1 : begin
         if (fm_bram_1_rdb_vld)
             max_fm_in_2 <= {64'b0, fm_bram_1_doutb[0 +: 896]};
-        else max_fm_in_2 <= 0;
+    end
+    `SPOOL_2 : begin
+        if (fm_bram_1_rdb_vld)
+            max_fm_in_2 <= {fm_bram_1_doutb[0 +: 160], fm_bram_1_doutb[0 +: 800]};
     end
     default: max_fm_in_2 <= 0;
     endcase
@@ -656,6 +687,24 @@ conv_2 u_conv_2(
     .store_en       (conv_2_store_en),
     .conv_2_finish  (conv_2_finish)
     );     
+
+pool_2 u_pool_2(
+    .clk                (clk),
+    .rst                (rst),
+    .pool_2_en          (pool_2_en),
+    .pool_max_result_1  (pool_max_result_1[10*16-1:0]),
+    .pool_max_result_2  (pool_max_result_2[15*16-1:0]),
+    .fm_bram_1_ena      (pool_2_fm_bram_1_ena),//read
+    .fm_bram_1_enb      (pool_2_fm_bram_1_enb),    
+    .fm_bram_1_addra    (pool_2_fm_bram_1_addra),
+    .fm_bram_1_addrb    (pool_2_fm_bram_1_addrb),
+    .fm_bram_wea        (pool_2_fm_bram_wea),
+    .fm_bram_addra      (pool_2_fm_bram_addra),
+    .fm_bram_dina       (pool_2_fm_bram_dina),
+    .pool_2_finish      (pool_2_finish)
+    );
+
+
 
 
 FM_BRAM u_fm_bram (

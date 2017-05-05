@@ -30,6 +30,7 @@ input result_33_vld,
 input [`MAC_NUM * 33-1 : 0] result_33,
 input [4 * 28 - 1 : 0] bias_0,
 input store_en,
+input [4:0] init_times,
 output [`MAC_NUM * 28-1 : 0] result_out_28,
 output reg [`MAC_NUM * 17-1 : 0] store_data_17
     );
@@ -75,8 +76,6 @@ end
 
 
 
-
-
 always @ (posedge clk)
 begin
     if (rst | ~en) begin
@@ -96,6 +95,9 @@ begin
         end
         `SCONV_2: begin  
             out_buf[0][0 +: 100*28] <= {112{bias_0[28 +: 28]}};                           
+        end
+        `SFC_1: begin
+            out_buf[0][init_times*4*28 + 4*28] <= bias_0;
         end
         endcase 
     end                                    
@@ -134,8 +136,11 @@ begin
             out_buf[1][0 +: 112*28] <= {112{bias_0[0 +: 28]}};
         end
         `SCONV_2: begin
-            out_buf[1][0 +: 100*28] <= {112{bias_0[0 +: 28]}};               
-        end        
+            out_buf[1][0 +: 100*28] <= {112{bias_0[0 +: 28]}};                      
+        end
+        `SFC_1: begin    
+            out_buf[1] <= 0;
+        end    
         default: begin
             out_buf[1] <= out_buf[1];
         end

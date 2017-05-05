@@ -97,7 +97,7 @@ begin
             out_buf[0][0 +: 100*28] <= {112{bias_0[28 +: 28]}};                           
         end
         `SFC_1: begin
-            out_buf[0][init_times*4*28 + 4*28] <= bias_0;
+            out_buf[0][(29-init_times)*4*28 +: 4*28] <= bias_0;
         end
         endcase 
     end                                    

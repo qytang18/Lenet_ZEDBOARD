@@ -24,7 +24,8 @@ module lenet_top(
 input clk,
 input rst,
 input START,
-input pool_1_start,
+//input pool_1_start,
+input fc_1_start,
 output conv_1_sig,
 output pool_1_sig
     );
@@ -105,6 +106,7 @@ wire [6:0]      fc_1_bias_bram_addrb;
 wire            fc_1_fm_bram_ena;
 wire [4:0]      fc_1_fm_bram_addra;
 wire [4:0]      fc_1_init_bias;
+wire [4:0]      fc_1_init_times;
 
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
@@ -179,7 +181,7 @@ reg  [4 * 28 - 1 : 0]      bias_0;
 reg                        store_en;
 reg  [4 : 0]               bias_init_times;
 wire [`MAC_NUM * 28-1 : 0] output_buffer_result;
-wire [`MAC_NUM * 17-1 : 0] store_data;;
+wire [`MAC_NUM * 17-1 : 0] store_data;
 
 
 // for max module
@@ -226,6 +228,8 @@ begin
         conv_1_en <= 0;
         pool_1_en <= 0;
         conv_2_en <= 0;
+        pool_2_en <= 0;
+        fc_1_en <= 0;
     end    
     else 
     begin
@@ -235,14 +239,12 @@ begin
                 begin
                     CS <= `SCONV_1;
                     conv_1_en <= 1;
-                    pool_1_en <= 0;
                 end
-//               else if (pool_1_start)
-//                begin
-//                    CS <= `SPOOL_1;
-//                    conv_1_en <= 0;
-//                    pool_1_en <= 1;                    
-//                end
+               else if (fc_1_start)
+                begin
+                    CS <= `SFC_1;
+                    fc_1_en <= 1;                    
+                end
                // else CS <= CS;
             end
             `SCONV_1: begin
@@ -522,7 +524,7 @@ end
 always @ (posedge clk)
 begin
     case (CS)
-        `SFC_1: bias_init_times = fc_1_init_times;
+        `SFC_1: bias_init_times <= fc_1_init_times;
     endcase
 end
 
@@ -763,6 +765,7 @@ fc_1 u_fc_1(
     .clk                (clk),
     .rst                (rst),
     .fc_1_en            (fc_1_en),
+    .bias_bram_rd_vld   (bias_bram_rd_vld),
     .bias_bram_ena      (fc_1_bias_bram_ena),
     .bias_bram_addra    (fc_1_bias_bram_addra),
     .bias_bram_enb      (fc_1_bias_bram_enb),
@@ -872,6 +875,8 @@ input_buffer u_input_buffer(
 MAC u_mac(
     .clk            (clk),
     .rst            (rst),
+    .CS             (CS),
+    .mac_sel        (mac_sel),
     .mac_en         (mac_en),
     .img            (fm_in),
     .ker            (ker_in),

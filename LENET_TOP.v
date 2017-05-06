@@ -27,7 +27,8 @@ input START,
 //input pool_1_start,
 input fc_1_start,
 output conv_1_sig,
-output pool_1_sig
+output pool_1_sig,
+output fc_1_sig
     );
 
 reg conv_1_en;   
@@ -51,10 +52,10 @@ wire   [6 : 0]  conv_1_bias_bram_addr;
 wire            conv_1_bias_bram_en;
 wire            conv_1_fm_bram_wea;
 wire   [6 : 0]  conv_1_fm_bram_waddr_a;
-wire   [64 * 16 - 1 : 0] conv_1_fm_bram_wdata_a;
+wire   [56 * 16 - 1 : 0] conv_1_fm_bram_wdata_a;
 wire            conv_1_fm_bram_web;
 wire   [6 : 0]  conv_1_fm_bram_waddr_b;
-wire   [64 * 16 - 1 : 0] conv_1_fm_bram_wdata_b;
+wire   [56 * 16 - 1 : 0] conv_1_fm_bram_wdata_b;
 wire conv_1_finish;
 wire conv_1_store_en;
 
@@ -105,8 +106,13 @@ wire [6:0]      fc_1_bias_bram_addra;
 wire [6:0]      fc_1_bias_bram_addrb;
 wire            fc_1_fm_bram_ena;
 wire [4:0]      fc_1_fm_bram_addra;
+wire            fc_1_fm_bram_1_wea;
+wire [6:0]      fc_1_fm_bram_1_addra;
+wire [895:0]    fc_1_fm_bram_1_dina;
 wire [4:0]      fc_1_init_bias;
 wire [4:0]      fc_1_init_times;
+wire [15:0]     fc_1_fm_node;
+wire            fc_1_sum_en;
 
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
@@ -161,10 +167,12 @@ wire [959:0]    fc1_w_bram_douta;
 wire            fc1_w_bram_enb;
 wire [9:0]      fc1_w_bram_addrb;
 wire [959:0]    fc1_w_bram_doutb; 
-
+reg            fc1_w_bram_rd_vld;
 
 //for input buffer module
 reg input_buffer_en;
+reg [70*16-1:0] input_buf_in_1;
+reg [70*16-1:0] input_buf_in_2;
 wire [`MAC_NUM * 16 - 1 : 0] fm_in;
 
 //for mac module
@@ -182,7 +190,7 @@ reg                        store_en;
 reg  [4 : 0]               bias_init_times;
 wire [`MAC_NUM * 28-1 : 0] output_buffer_result;
 wire [`MAC_NUM * 17-1 : 0] store_data;
-
+reg                        sum_en;
 
 // for max module
 reg  [`MAX_NUM * 4 * 16 - 1 : 0]     max_fm_in_1;        
@@ -196,6 +204,7 @@ wire [`MAX_NUM * 16 - 1 : 0]         pool_max_result_2;
 //assign fm_bram_dinb_out = fm_bram_dinb;  
 assign conv_1_sig = & mac_result;
 assign pool_1_sig = (& pool_max_result_1) && (&pool_max_result_2);
+assign fc_1_sig = & store_data;
 
 always @ (posedge clk)
 begin
@@ -219,6 +228,11 @@ begin
    conv_w_bram_rd_vld <= conv_w_bram_ena;
 end
 
+always @ (posedge clk)
+begin
+   fc1_w_bram_rd_vld <= fc1_w_bram_ena;
+end
+
 /*************OVERALL FSM********************/
 always @ (posedge clk)
 begin
@@ -240,11 +254,11 @@ begin
                     CS <= `SCONV_1;
                     conv_1_en <= 1;
                 end
-               else if (fc_1_start)
-                begin
-                    CS <= `SFC_1;
-                    fc_1_en <= 1;                    
-                end
+//               else if (fc_1_start)
+//                begin
+//                    CS <= `SFC_1;
+//                    fc_1_en <= 1;                    
+//                end
                // else CS <= CS;
             end
             `SCONV_1: begin
@@ -332,7 +346,7 @@ always @ (*)begin
 			fm_bram_dina = pool_1_fm_bram_dina;
 			fm_bram_dinb = pool_1_fm_bram_dinb;
 	   end
-	   `SCONV_2: begin
+	    `SCONV_2: begin
 	        fm_bram_ena = conv_2_fm_bram_ena;
             fm_bram_enb = conv_2_fm_bram_enb;
             fm_bram_wea = 0;
@@ -349,6 +363,7 @@ always @ (*)begin
        end
        `SFC_1: begin
            fm_bram_ena = fc_1_fm_bram_ena;
+           fm_bram_enb = 0;
            fm_bram_addra = fc_1_fm_bram_addra;  
       end
         default: begin
@@ -407,6 +422,12 @@ always @ (*)begin
             fm_bram_1_web = 0;
             fm_bram_1_addra = pool_2_fm_bram_1_addra;
             fm_bram_1_addrb = pool_2_fm_bram_1_addrb;                        
+        end
+        `SFC_1: begin
+            fm_bram_1_ena = fc_1_fm_bram_1_wea;
+            fm_bram_1_enb = 0;
+            fm_bram_1_addra = fc_1_fm_bram_1_addra;
+            fm_bram_1_dina = fc_1_fm_bram_1_dina;
         end
         default: begin
             fm_bram_1_ena = 0;
@@ -545,6 +566,9 @@ begin
              if (conv_w_bram_rd_vld)
                  ker_in <= {20{conv_w_bram_douta[23 : 8]}};
           end
+        `SFC_1: begin
+             ker_in <= {20{fc_1_fm_node}};
+         end  
          default:
             ker_in <= 0;
         endcase
@@ -558,17 +582,34 @@ begin
         input_buffer_en <= 0;
     else 
     case (CS) 
-    `SCONV_1:begin
+    `SCONV_1:
         input_buffer_en <= conv_1_conv_w_bram_en;
-    end
-    `SCONV_2:begin
+    `SCONV_2:
         input_buffer_en <= conv_2_conv_w_bram_en;
-    end
+    `SFC_1:
+        input_buffer_en <= fc1_w_bram_ena;       
     default:
         input_buffer_en <= 0;
     endcase
 end
 
+always @ (*)
+begin
+    case (CS)
+    `SCONV_1:begin
+        input_buf_in_1 = fm_bram_douta;
+        input_buf_in_2 = fm_bram_doutb;    
+    end
+    `SCONV_2:begin
+        input_buf_in_1 = fm_bram_douta;
+        input_buf_in_2 = fm_bram_doutb;    
+    end
+    `SFC_1:begin
+        input_buf_in_1[0+:60*16] = fc1_w_bram_douta;
+        input_buf_in_2[0+:60*16] = fc1_w_bram_doutb;    
+    end   
+    endcase         
+end
 
 //mac_en
 always @ (posedge clk)
@@ -590,6 +631,12 @@ begin
             else 
                 mac_en <= 0;
         end
+        `SFC_1:begin
+            if (fc1_w_bram_rd_vld)
+                mac_en <= {120'hff_ffff_ffff_ffff_ffff_ffff_ffff_ffff};
+            else 
+                mac_en <= 0;
+        end
         default: 
             mac_en <= 0;
         endcase
@@ -600,7 +647,17 @@ always @ (*)
 begin
     case (CS)
         `SCONV_1: store_en = conv_1_store_en; 
-        `SCONV_2: store_en = conv_2_store_en;         
+        `SCONV_2: store_en = conv_2_store_en;  
+        default: store_en = 0;       
+    endcase
+end
+
+always @ (*)
+begin
+    case (CS)
+        `SFC_1: sum_en = fc_1_sum_en; 
+//        `SCONV_2: sum_en = fc_2_sum_en; 
+        default: sum_en = 0;
     endcase
 end
 
@@ -766,6 +823,11 @@ fc_1 u_fc_1(
     .rst                (rst),
     .fc_1_en            (fc_1_en),
     .bias_bram_rd_vld   (bias_bram_rd_vld),
+    .fm_bram_douta      (fm_bram_douta[25*16-1:0]),
+    .fm_bram_rda_vld    (fm_bram_rda_vld),
+    .store_data         (store_data[10*17-1:0]),
+    .fm_node            (fc_1_fm_node),
+    .sum_en             (fc_1_sum_en),
     .bias_bram_ena      (fc_1_bias_bram_ena),
     .bias_bram_addra    (fc_1_bias_bram_addra),
     .bias_bram_enb      (fc_1_bias_bram_enb),
@@ -776,6 +838,9 @@ fc_1 u_fc_1(
     .fc1_w_bram_addrb   (fc1_w_bram_addrb),
     .fm_bram_ena        (fc_1_fm_bram_ena),
     .fm_bram_addra      (fc_1_fm_bram_addra),
+    .fm_bram_1_wea      (fc_1_fm_bram_1_wea),
+    .fm_bram_1_addra    (fc_1_fm_bram_1_addra),
+    .fm_bram_1_dina     (fc_1_fm_bram_1_dina),    
     .init_times         (fc_1_init_times),
     .fc_1_finish        (fc_1_finish)
     );
@@ -823,7 +888,7 @@ CONV_W_BRAM u_conv_w_bram (
       .doutb(conv_w_bram_doutb)
     );  
 
-FC1_W_BRAM your_instance_name (
+FC1_W_BRAM u_fc1_w_bram (
   .clka     (clk),    // input wire clka
   .ena      (fc1_w_bram_ena),      // input wire ena
   .addra    (fc1_w_bram_addra),  // input wire [9 : 0] addra
@@ -856,8 +921,9 @@ output_buffer u_output_buffer(
     .bias_0                 (bias_0),
     .store_en               (store_en),
     .result_out_28          (output_buffer_result),
-    .store_data_17          (store_data),
-    .init_times             (bias_init_times)
+    .store_data_17_o          (store_data),
+    .init_times             (bias_init_times),
+    .sum_en                 (sum_en)
     ); 
 
 input_buffer u_input_buffer(
@@ -867,16 +933,16 @@ input_buffer u_input_buffer(
     .cur_state  (CS),
     .ker_row    (conv_w_bram_douta[7 : 4]),
     .ker_col    (conv_w_bram_douta[3 : 0]),
-    .in_1       (fm_bram_douta),
-    .in_2       (fm_bram_doutb),
+    .in_1       (input_buf_in_1),
+    .in_2       (input_buf_in_2),
     .input_buf  (fm_in)
     );
     
 MAC u_mac(
     .clk            (clk),
     .rst            (rst),
-    .CS             (CS),
-    .mac_sel        (mac_sel),
+//    .CS             (CS),
+//    .mac_sel        (mac_sel),
     .mac_en         (mac_en),
     .img            (fm_in),
     .ker            (ker_in),

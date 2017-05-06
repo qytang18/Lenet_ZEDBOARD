@@ -31,15 +31,26 @@ input [`MAC_NUM * 33-1 : 0] result_33,
 input [4 * 28 - 1 : 0] bias_0,
 input store_en,
 input [4:0] init_times,
+input sum_en,
 output [`MAC_NUM * 28-1 : 0] result_out_28,
-output reg [`MAC_NUM * 17-1 : 0] store_data_17
+output [`MAC_NUM * 17-1 : 0] store_data_17_o
     );
 
+reg [`MAC_NUM * 17-1 : 0] store_data_17;
 reg [`MAC_NUM * 28 - 1 : 0] out_buf [0 : 1];
+wire [10*17-1:0] sum_17;
 reg buf_num;
+reg sum_vld;
 assign result_out_28 = out_buf[buf_num];
 reg output_buffer_initial_d;
 integer j;
+assign store_data_17_o[10*17-1:0] = (sum_vld)? sum_17 : store_data_17[10*17-1:0];
+assign store_data_17_o[`MAC_NUM * 17-1 : 10*17] = store_data_17[`MAC_NUM * 17-1 : 10*17];
+
+always @ (posedge clk)
+begin
+    sum_vld <= sum_en;
+end
 
 always @ (posedge clk)
 begin
@@ -97,10 +108,12 @@ begin
             out_buf[0][0 +: 100*28] <= {112{bias_0[28 +: 28]}};                           
         end
         `SFC_1: begin
-            out_buf[0][(29-init_times)*4*28 +: 4*28] <= bias_0;
+            out_buf[0][init_times*4*28 +: 4*28] <= bias_0;
         end
         endcase 
-    end                                    
+    end
+    else if (sum_en)
+        out_buf[0] <= out_buf[0] >> 280;                                  
     else if (buf_num == 1) //cast the result to 28 bit
     begin
         for (j = 0; j < `MAC_NUM; j = j + 1)
@@ -145,6 +158,8 @@ begin
             out_buf[1] <= out_buf[1];
         end
     endcase    
+    else if (sum_en)
+        out_buf[1] <= out_buf[1] >> 280;
     else if (buf_num == 0)//cast the result to 28 bit
     begin
         for (j = 0; j < `MAC_NUM; j = j + 1)
@@ -171,5 +186,20 @@ begin
     end
 end
 
+
+
+genvar k;
+generate for (k = 0; k < 10; k=k+1) begin :add_up
+    ADD_UP u_add_up (
+      .CLK(clk),          // input wire CLK
+      .CE(sum_en),            // input wire CE
+      .SCLR(rst),        // input wire SCLR
+      .CARRYIN(out_buf[0][28*k+11]||out_buf[1][28*k+11]),  // input wire CARRYIN
+      .A(out_buf[0][28*k+12 +: 16]),              // input wire [15 : 0] A
+      .C(out_buf[1][28*k+12 +: 16]),              // input wire [15 : 0] C
+      .P(sum_17[k*17 +: 17])              // output wire [16 : 0] P
+    );
+end
+endgenerate 
 
 endmodule

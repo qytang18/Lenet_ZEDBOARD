@@ -26,6 +26,7 @@ input rst,
 input pool_2_en,
 input [10 * 16 - 1 : 0] pool_max_result_1,
 input [15 * 16 - 1 : 0] pool_max_result_2,
+output max_en,
 output reg fm_bram_1_ena,//read
 output reg fm_bram_1_enb,
 output reg [6 : 0] fm_bram_1_addra,
@@ -41,8 +42,10 @@ output reg pool_2_finish
 
 reg finish;
 reg pool_2_en_d;
-reg  [3 : 0] result_vld;
+reg  [4 : 0] result_vld;
 wire pool_2_en_p;
+
+assign max_en = result_vld[1];
 
 always @ (posedge clk)
     pool_2_finish <= (fm_bram_addra == 15);
@@ -64,7 +67,7 @@ begin
     if (rst)
         result_vld <= 0;
     else 
-        result_vld <= {result_vld[2:0],fm_bram_1_ena};
+        result_vld <= {result_vld[3:0],fm_bram_1_ena};
 end
 
 always @ (posedge clk)
@@ -97,7 +100,7 @@ end
 
 always @ (posedge clk)
 begin
-    if (result_vld[3]) begin
+    if (result_vld[4]) begin
         fm_bram_wea <= 1;
     end
     else fm_bram_wea <= 0;
@@ -113,7 +116,7 @@ end
 
 always @ (posedge clk)
 begin
-    if (result_vld[3])
+    if (result_vld[4])
         fm_bram_dina <= {720'h0,pool_max_result_1, pool_max_result_2};
 end
 

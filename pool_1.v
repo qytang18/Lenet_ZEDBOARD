@@ -26,6 +26,7 @@ input rst,
 input pool_1_en,
 input [14 * 16 - 1 : 0] pool_max_result_1,
 input [14 * 16 - 1 : 0] pool_max_result_2,
+output max_en,
 output reg fm_bram_1_ena,//read
 output reg fm_bram_1_enb,
 output reg [6 : 0] fm_bram_1_addra,
@@ -41,12 +42,15 @@ output pool_1_finish
     
 reg pool_1_en_d;
 wire pool_1_en_p;
-reg  [3 : 0] result_vld;
+reg  [4 : 0] result_vld;
 reg [2:0] buf_cnt;
 reg [56 * 16 - 1 : 0] wdata_buf_a;
 reg [56 * 16 - 1 : 0] wdata_buf_b;
 reg finish;
 reg [3 : 0] finish_d;
+
+assign max_en = result_vld[1];
+
 always @ (posedge clk)
 begin
     if (rst)
@@ -72,7 +76,7 @@ begin
     if (rst)
         result_vld <= 0;
     else 
-        result_vld <= {result_vld[2:0],fm_bram_1_ena};
+        result_vld <= {result_vld[3:0],fm_bram_1_ena};
 end
 
 //fm_bram_1_ena/enb
@@ -118,7 +122,7 @@ always @ (posedge clk)
 begin
     if (rst) 
         buf_cnt <= 0;
-    else if (result_vld[3])
+    else if (result_vld[4])
     begin
        if (buf_cnt == 4) begin
             if (fm_bram_addra % 3 == 1)
@@ -134,7 +138,7 @@ end
 
 always @ (posedge clk)
 begin
-    if (result_vld[3]) begin
+    if (result_vld[4]) begin
         case (buf_cnt)
             3'd0: begin
                 wdata_buf_a[42*16 +: 14*16] <= pool_max_result_1;

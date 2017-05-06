@@ -70,6 +70,7 @@ wire   [4 : 0]  pool_1_fm_bram_addra;
 wire   [4 : 0]  pool_1_fm_bram_addrb;
 wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dina;
 wire   [70 * 16 - 1 : 0] pool_1_fm_bram_dinb;
+wire            pool_1_max_en;
 wire pool_1_finish;
 
 //conv_2
@@ -98,6 +99,7 @@ wire            pool_2_fm_bram_wea;
 wire [4 : 0]    pool_2_fm_bram_addra;
 wire [70 * 16 - 1 : 0] pool_2_fm_bram_dina;
 wire            pool_2_finish;
+wire            pool_2_max_en;
 
 //fc 1
 wire            fc_1_bias_bram_ena;
@@ -113,6 +115,15 @@ wire [4:0]      fc_1_init_bias;
 wire [4:0]      fc_1_init_times;
 wire [15:0]     fc_1_fm_node;
 wire            fc_1_sum_en;
+
+//relu 1
+wire            relu_1_fm_bram_1_ena;
+wire [6:0]      relu_1_fm_bram_1_addra;
+wire            relu_1_fm_bram_wea;
+wire [4:0]      relu_1_fm_bram_addra;
+wire [70*16-1:0] relu_1_fm_bram_dina;
+wire            relu_1_finish;
+wire            relu_1_max_en;
 
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
@@ -302,6 +313,14 @@ begin
                     relu_1_en <= 1;
                 end
             end
+            `SRELU_1: begin
+                if (relu_1_finish)
+                begin
+                    CS <= `SFC_2;
+                    fc_1_en <= 0;
+                    relu_1_en <= 0;
+                end
+            end
             default: 
             begin
                 CS <= CS;
@@ -366,6 +385,13 @@ always @ (*)begin
            fm_bram_enb = 0;
            fm_bram_addra = fc_1_fm_bram_addra;  
       end
+      `SRELU_1: begin
+           fm_bram_ena = relu_1_fm_bram_wea;
+           fm_bram_wea = relu_1_fm_bram_wea;
+           fm_bram_enb = 0;
+           fm_bram_addra = relu_1_fm_bram_addra;
+           fm_bram_dina = relu_1_fm_bram_dina;
+      end
         default: begin
             fm_bram_ena = 0;
             fm_bram_enb = 0;
@@ -391,7 +417,7 @@ always @ (*)begin
             fm_bram_1_ena = conv_1_fm_bram_wea;
             fm_bram_1_enb = conv_1_fm_bram_web;
             fm_bram_1_wea = conv_1_fm_bram_wea;
-            fm_bram_1_web = conv_1_fm_bram_wea;
+            fm_bram_1_web = conv_1_fm_bram_web;
             fm_bram_1_addra = conv_1_fm_bram_waddr_a;
             fm_bram_1_addrb = conv_1_fm_bram_waddr_b;
             fm_bram_1_dina = conv_1_fm_bram_wdata_a;  
@@ -409,7 +435,7 @@ always @ (*)begin
             fm_bram_1_ena = conv_2_fm_bram_1_wea;
             fm_bram_1_enb = conv_2_fm_bram_1_web;
             fm_bram_1_wea = conv_2_fm_bram_1_wea;
-            fm_bram_1_web = conv_2_fm_bram_1_wea;
+            fm_bram_1_web = conv_2_fm_bram_1_web;
             fm_bram_1_addra = conv_2_fm_bram_1_addra;
             fm_bram_1_addrb = conv_2_fm_bram_1_addrb;
             fm_bram_1_dina = conv_2_fm_bram_1_dina;  
@@ -425,9 +451,16 @@ always @ (*)begin
         end
         `SFC_1: begin
             fm_bram_1_ena = fc_1_fm_bram_1_wea;
+            fm_bram_1_wea = fc_1_fm_bram_1_wea;
             fm_bram_1_enb = 0;
             fm_bram_1_addra = fc_1_fm_bram_1_addra;
             fm_bram_1_dina = fc_1_fm_bram_1_dina;
+        end
+        `SRELU_1: begin
+            fm_bram_1_ena = relu_1_fm_bram_1_ena;
+            fm_bram_1_enb = 0;
+            fm_bram_1_wea = 0;
+            fm_bram_1_addra = relu_1_fm_bram_1_addra;            
         end
         default: begin
             fm_bram_1_ena = 0;
@@ -669,13 +702,18 @@ begin
     else begin
         case (CS) 
         `SPOOL_1: begin
-            if (pool_1_fm_bram_1_ena)
+            if (pool_1_max_en)
                 max_en_1 <= {1'b0,14'h3fff};
             else max_en_1 <= 0;
         end
         `SPOOL_2: begin
-            if (pool_2_fm_bram_1_ena)
+            if (pool_2_max_en)
                 max_en_1 <= {5'b0, 10'h3ff};
+            else max_en_1 <= 0;
+        end
+        `SRELU_1: begin
+            if (relu_1_max_en)
+                max_en_1 <= {5'b0,10'h3ff};
             else max_en_1 <= 0;
         end
         default:
@@ -691,12 +729,12 @@ begin
     else begin
         case (CS) 
         `SPOOL_1: begin
-            if (pool_1_fm_bram_1_enb)
+            if (pool_1_max_en)
                 max_en_2 <= {1'b0,14'h3fff};
             else max_en_2 <= 0;
         end
         `SPOOL_2: begin
-            if (pool_2_fm_bram_1_enb)
+            if (pool_2_max_en)
                 max_en_2 <= 15'h7fff;
             else max_en_2 <= 0;
         end        
@@ -716,6 +754,10 @@ begin
    `SPOOL_2 : begin
         if (fm_bram_1_rda_vld)
             max_fm_in_1 <= {320'b0, fm_bram_1_douta[10*16 +: 40*16]};
+    end
+    `SRELU_1: begin
+        if (fm_bram_1_rda_vld)
+            max_fm_in_1[0+:10*16] <= fm_bram_1_douta[0+:10*16];  
     end
     default: max_fm_in_1 <= 0;
     endcase
@@ -766,6 +808,7 @@ pool_1 u_pool_1(
     .pool_1_en          (pool_1_en),
     .pool_max_result_1  (pool_max_result_1[14*16-1:0]),
     .pool_max_result_2  (pool_max_result_2[14*16-1:0]),
+    .max_en             (pool_1_max_en),
     .fm_bram_1_ena      (pool_1_fm_bram_1_ena),//read
     .fm_bram_1_enb      (pool_1_fm_bram_1_enb),    
     .fm_bram_1_addra    (pool_1_fm_bram_1_addra),
@@ -808,6 +851,7 @@ pool_2 u_pool_2(
     .pool_2_en          (pool_2_en),
     .pool_max_result_1  (pool_max_result_1[10*16-1:0]),
     .pool_max_result_2  (pool_max_result_2[15*16-1:0]),
+    .max_en             (pool_2_max_en),
     .fm_bram_1_ena      (pool_2_fm_bram_1_ena),//read
     .fm_bram_1_enb      (pool_2_fm_bram_1_enb),    
     .fm_bram_1_addra    (pool_2_fm_bram_1_addra),
@@ -844,6 +888,20 @@ fc_1 u_fc_1(
     .init_times         (fc_1_init_times),
     .fc_1_finish        (fc_1_finish)
     );
+
+relu_1 u_relu_1(
+    .clk            (clk),
+    .rst            (rst),
+    .relu_1_en      (relu_1_en),
+    .pool_max_result(pool_max_result_1[0+:160]),
+    .fm_bram_1_ena  (relu_1_fm_bram_1_ena),
+    .fm_bram_1_addra(relu_1_fm_bram_1_addra),
+    .fm_bram_wea    (relu_1_fm_bram_wea),
+    .fm_bram_addra  (relu_1_fm_bram_addra),
+    .fm_bram_dina   (relu_1_fm_bram_dina),
+    .relu_1_finish  (relu_1_finish),
+    .max_en         (relu_1_max_en)
+);
 
 
 

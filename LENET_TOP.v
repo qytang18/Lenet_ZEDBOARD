@@ -25,10 +25,11 @@ input clk,
 input rst,
 input START,
 //input pool_1_start,
-//input fc_2_start,
+input fc_3_start,
 output conv_1_sig,
 output pool_1_sig,
-output fc_1_sig
+output fc_1_sig,
+output [10*16-1:0] result_10x16
     );
 
 reg conv_1_en;   
@@ -153,6 +154,19 @@ wire [70*16-1:0] relu_2_fm_bram_dina;
 wire            relu_2_finish;
 wire            relu_2_max_en;
 
+//fc3
+wire            fc_3_bias_bram_ena;
+wire            fc_3_bias_bram_enb;
+wire [6:0]      fc_3_bias_bram_addra;
+wire [6:0]      fc_3_bias_bram_addrb;
+wire            fc_3_fm_bram_ena;
+wire [4:0]      fc_3_fm_bram_addra;
+wire [4:0]      fc_3_init_bias;
+wire [4:0]      fc_3_init_times;
+wire [15:0]     fc_3_fm_node;
+wire            fc_3_sum_en;
+wire            fc_3_finish;
+
 //conv_w_bram control signals
 reg             conv_w_bram_ena;
 reg    [11 : 0] conv_w_bram_addra;
@@ -209,13 +223,21 @@ wire [959:0]    fc1_w_bram_doutb;
 reg             fc1_w_bram_rd_vld;
 
 //fc2_w bram
+reg            fc23_w_bram_ena;
+reg [8:0]      fc23_w_bram_addra;
+wire [671:0]    fc23_w_bram_douta;
+reg            fc23_w_bram_enb;
+reg [8:0]      fc23_w_bram_addrb;
+wire [671:0]    fc23_w_bram_doutb; 
+reg             fc23_w_bram_rd_vld;
+
 wire            fc2_w_bram_ena;
 wire [8:0]      fc2_w_bram_addra;
-wire [671:0]    fc2_w_bram_douta;
 wire            fc2_w_bram_enb;
 wire [8:0]      fc2_w_bram_addrb;
-wire [671:0]    fc2_w_bram_doutb; 
-reg             fc2_w_bram_rd_vld;
+
+wire            fc3_w_bram_ena;
+wire [8:0]      fc3_w_bram_addra;
 
 //for input buffer module
 reg input_buffer_en;
@@ -283,7 +305,7 @@ end
 
 always @ (posedge clk)
 begin
-   fc2_w_bram_rd_vld <= fc2_w_bram_ena;
+   fc23_w_bram_rd_vld <= fc23_w_bram_ena;
 end
 
 /*************OVERALL FSM********************/
@@ -300,6 +322,7 @@ begin
         relu_1_en <= 0;
         fc_2_en <= 0;
         relu_2_en <= 0;
+        fc_3_en <= 0;
     end    
     else 
     begin
@@ -310,11 +333,11 @@ begin
                     CS <= `SCONV_1;
                     conv_1_en <= 1;
                 end
-//               else if (fc_2_start)
-//                begin
-//                    CS <= `SFC_2;
-//                    fc_2_en <= 1;                    
-//                end
+               else if (fc_3_start)
+                begin
+                    CS <= `SFC_3;
+                    fc_3_en <= 1;                    
+                end
                // else CS <= CS;
             end
             `SCONV_1: begin
@@ -380,6 +403,13 @@ begin
                     CS <= `SFC_3;
                     fc_3_en <= 1;
                     relu_2_en <= 0;
+                end
+            end
+            `SFC_3: begin
+                if (fc_3_finish)
+                begin
+                    CS <= `IDLE;
+                    fc_3_en <= 0;                   
                 end
             end
             default: 
@@ -470,6 +500,12 @@ always @ (*)begin
            fm_bram_addra = relu_2_fm_bram_addra;
            fm_bram_dina = relu_2_fm_bram_dina;
        end
+      `SFC_3: begin
+            fm_bram_ena = fc_3_fm_bram_ena;
+            fm_bram_enb = 0;
+            fm_bram_wea = 0;
+            fm_bram_addra = fc_3_fm_bram_addra; 
+       end 
        default: begin
             fm_bram_ena = 0;
             fm_bram_enb = 0;
@@ -621,7 +657,13 @@ begin
             bias_bram_addra = fc_2_bias_bram_addra;
             bias_bram_enb = fc_2_bias_bram_enb;
             bias_bram_addrb = fc_2_bias_bram_addrb;
-        end            
+        end    
+        `SFC_3: begin
+            bias_bram_ena = fc_3_bias_bram_ena;        
+            bias_bram_addra = fc_3_bias_bram_addra;
+            bias_bram_enb = fc_3_bias_bram_enb;
+            bias_bram_addrb = fc_3_bias_bram_addrb;
+        end         
         default: begin
             bias_bram_ena = 0;
             bias_bram_enb = 0;
@@ -629,6 +671,24 @@ begin
         endcase
     end
 end
+
+always @ (*)
+begin
+    case (CS)
+    `SFC_2: begin
+        fc23_w_bram_ena = fc2_w_bram_ena;
+        fc23_w_bram_addra = fc2_w_bram_addra;
+        fc23_w_bram_enb = fc2_w_bram_enb;
+        fc23_w_bram_addrb = fc2_w_bram_addrb;
+    end
+    `SFC_3: begin
+        fc23_w_bram_enb = 0;
+        fc23_w_bram_ena = fc3_w_bram_ena;
+        fc23_w_bram_addra = fc3_w_bram_addra;
+    end
+    endcase
+end
+
 
 //output buffer initial
 always @ (posedge clk)
@@ -673,7 +733,16 @@ begin
                 end
                 else
                     output_buffer_initial <= 0;
-           end           
+           end   
+          `SFC_3: begin
+                if (bias_bram_rd_vld)
+                begin
+                    output_buffer_initial <= 1;
+                    bias_0 <= {bias_bram_douta[31:16],12'b0,bias_bram_douta[15:0],12'b0,bias_bram_doutb[31:16],12'b0,bias_bram_doutb[15:0],12'b0};
+                end
+                else
+                    output_buffer_initial <= 0;
+           end         
            default: begin
               output_buffer_initial <= 0;
            end
@@ -685,7 +754,8 @@ always @ (posedge clk)
 begin
     case (CS)
         `SFC_1: bias_init_times <= fc_1_init_times;
-        `SFC_2: bias_init_times <= fc_2_init_times;        
+        `SFC_2: bias_init_times <= fc_2_init_times;   
+        `SFC_3: bias_init_times <= fc_3_init_times;       
     endcase
 end
 
@@ -712,6 +782,9 @@ begin
         `SFC_2: begin
               ker_in <= {20{fc_2_fm_node}};
          end  
+         `SFC_3: begin
+               ker_in <= {20{fc_3_fm_node}};
+          end  
          default:
             ker_in <= 0;
         endcase
@@ -732,7 +805,9 @@ begin
     `SFC_1:
         input_buffer_en <= fc1_w_bram_ena;    
     `SFC_2:
-        input_buffer_en <= fc2_w_bram_ena;             
+        input_buffer_en <= fc23_w_bram_ena;    
+    `SFC_3:
+        input_buffer_en <= fc23_w_bram_ena;           
     default:
         input_buffer_en <= 0;
     endcase
@@ -754,8 +829,11 @@ begin
         input_buf_in_2[0+:60*16] = fc1_w_bram_doutb;    
     end   
     `SFC_2:begin
-        input_buf_in_1[0+:42*16] = fc2_w_bram_douta;
-        input_buf_in_2[0+:42*16] = fc2_w_bram_doutb;    
+        input_buf_in_1[0+:42*16] = fc23_w_bram_douta;
+        input_buf_in_2[0+:42*16] = fc23_w_bram_doutb;    
+    end
+    `SFC_3:begin
+        input_buf_in_2[0+:42*16] = fc23_w_bram_douta;   
     end
     default: begin
         input_buf_in_1 = 0;
@@ -787,8 +865,14 @@ begin
             mac_en <= 0;
     end
     `SFC_2:begin
-        if (fc2_w_bram_rd_vld)
+        if (fc23_w_bram_rd_vld)
             mac_en <= {36'h0, 84'hf_ffff_ffff_ffff_ffff_ffff};
+        else 
+            mac_en <= 0;
+    end
+    `SFC_3:begin
+        if (fc23_w_bram_rd_vld)
+            mac_en <= {110'h0, 10'h3ff};
         else 
             mac_en <= 0;
     end
@@ -810,6 +894,7 @@ begin
     case (CS)
         `SFC_1: sum_en = fc_1_sum_en; 
         `SFC_2: sum_en = fc_2_sum_en; 
+        `SFC_3: sum_en = fc_3_sum_en;
         default: sum_en = 0;
     endcase
 end
@@ -1073,6 +1158,29 @@ relu_2 u_relu_2(
     .max_en         (relu_2_max_en)
 );
 
+fc_3 u_fc_3(
+    .clk                (clk),
+    .rst                (rst),
+    .fc_3_en            (fc_3_en),
+    .bias_bram_rd_vld   (bias_bram_rd_vld),
+    .fm_bram_douta      (fm_bram_douta[10*16-1:0]),
+    .fm_bram_rda_vld    (fm_bram_rda_vld),
+    .store_data         (store_data[10*17-1:0]),
+    .fm_node            (fc_3_fm_node),
+    .sum_en             (fc_3_sum_en),
+    .bias_bram_ena      (fc_3_bias_bram_ena),
+    .bias_bram_addra    (fc_3_bias_bram_addra),
+    .bias_bram_enb      (fc_3_bias_bram_enb),
+    .bias_bram_addrb    (fc_3_bias_bram_addrb),
+    .fc3_w_bram_ena     (fc3_w_bram_ena),
+    .fc3_w_bram_addra   (fc3_w_bram_addra),
+    .fm_bram_ena        (fc_3_fm_bram_ena),
+    .fm_bram_addra      (fc_3_fm_bram_addra),
+    .result_10x16       (result_10x16),
+    .init_times         (fc_3_init_times),
+    .fc_3_finish        (fc_3_finish)
+    );
+
 FM_BRAM u_fm_bram (
       .clka (clk),    // input wire clka
       .ena  (fm_bram_ena),      // input wire ena
@@ -1125,15 +1233,15 @@ FC1_W_BRAM u_fc1_w_bram (
   .doutb    (fc1_w_bram_doutb)  // output wire [959 : 0] doutb
 );
 
-FC2_W_BRAM u_fc2_w_bram (
+FC2_W_BRAM u_fc23_w_bram (
   .clka     (clk),    // input wire clka
-  .ena      (fc2_w_bram_ena),      // input wire ena
-  .addra    (fc2_w_bram_addra),  // input wire [8 : 0] addra
-  .douta    (fc2_w_bram_douta),  // output wire [671 : 0] douta
+  .ena      (fc23_w_bram_ena),      // input wire ena
+  .addra    (fc23_w_bram_addra),  // input wire [8 : 0] addra
+  .douta    (fc23_w_bram_douta),  // output wire [671 : 0] douta
   .clkb     (clk),    // input wire clkb
-  .enb      (fc2_w_bram_enb),      // input wire enb
-  .addrb    (fc2_w_bram_addrb),  // input wire [8 : 0] addrb
-  .doutb    (fc2_w_bram_doutb)  // output wire [671 : 0] doutb
+  .enb      (fc23_w_bram_enb),      // input wire enb
+  .addrb    (fc23_w_bram_addrb),  // input wire [8 : 0] addrb
+  .doutb    (fc23_w_bram_doutb)  // output wire [671 : 0] doutb
 );
 
 BIAS_BRAM u_bias_bram (

@@ -113,6 +113,9 @@ begin
         `SFC_2: begin
             out_buf[0][init_times*4*28 +: 4*28] <= bias_0;
         end
+        `SFC_3: begin
+            out_buf[0][init_times*4*28 +: 4*28] <= bias_0;
+        end
         endcase 
     end
     else if (sum_en)
@@ -154,14 +157,8 @@ begin
         `SCONV_2: begin
             out_buf[1][0 +: 100*28] <= {112{bias_0[0 +: 28]}};                      
         end
-        `SFC_1: begin    
-            out_buf[1] <= 0;
-        end    
-        `SFC_2: begin    
-            out_buf[1] <= 0;
-        end  
         default: begin
-            out_buf[1] <= out_buf[1];
+            out_buf[1] <= 0;
         end
     endcase    
     else if (sum_en)
